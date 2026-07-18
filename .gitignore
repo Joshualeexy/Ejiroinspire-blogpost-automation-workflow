@@ -1,0 +1,55 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+dist/
+build/
+*.egg-info/
+/backend
+/frontend
+# Distribution / packaging
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Installer logs
+log/
+*.egg
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Local config
+config.py
+generated/
+
+# Logs
+*.log
+
+# Temporary files
+*~
+*.tmp
+*.temp
+
+# Virtual environments
+venv/
+env/
+ENV/
