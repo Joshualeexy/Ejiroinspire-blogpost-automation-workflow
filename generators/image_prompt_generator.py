@@ -1,5 +1,5 @@
-import ollama
 import os
+from services.ollama_client import OllamaClient
 
 
 class ImagePromptGenerator:
@@ -9,6 +9,7 @@ class ImagePromptGenerator:
             "OLLAMA_MODEL",
             "qwen3:8b"
         )
+        self.client = OllamaClient(self.model_name)
 
     def generate(self, topic, article) -> str:
 
@@ -43,9 +44,17 @@ Article excerpt:
 Return ONLY the image prompt.
 """
 
-        response = ollama.generate(
-            model=self.model_name,
+        response = self.client.generate(
             prompt=prompt,
         )
 
+        print(response["response"].strip())
         return response["response"].strip()
+
+    def unload(self) -> None:
+        try:
+            print("Unloading Ollama model...")
+            self.client.unload()
+            print("Ollama model unloaded.")
+        except Exception as e:
+            print(f"Warning: failed to unload Ollama model: {e}")

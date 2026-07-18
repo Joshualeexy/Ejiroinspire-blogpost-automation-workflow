@@ -1,5 +1,5 @@
 import json
-import ollama
+from services.ollama_client import OllamaClient
 import os
 import time
 from typing import Dict, Any
@@ -12,6 +12,7 @@ class ArticleGenerator:
             "qwen3:30b"
         )
         self.max_retries = max_retries
+        self.client = OllamaClient(self.model_name)
 
     def generate(self, topic: Dict[str, Any]) -> Dict[str, Any]:
 
@@ -67,8 +68,7 @@ Return ONLY valid JSON.
 
             try:
 
-                response = ollama.generate(
-                    model=self.model_name,
+                response = self.client.generate(
                     prompt=prompt,
                     format="json",
                     options={
