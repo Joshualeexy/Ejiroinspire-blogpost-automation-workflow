@@ -1,7 +1,9 @@
 import json
 import os
 import random
+import re
 import time
+from datetime import datetime
 from typing import Any, Dict, List
 
 from services.ollama_client import OllamaClient
@@ -140,6 +142,55 @@ class TopicGenerator:
         normalized = title.strip().lower()
         return any(normalized == entry["title"].strip().lower() for entry in history)
 
+    # Matches a standalone 4-digit year like 2024, 2026, 2031 -- not part of
+    # a longer number (e.g. won't match the "2024" inside "SM-2024X").
+    YEAR_PATTERN = re.compile(r"\b(20\d{2})\b")
+
+    def _year_violation(self, title: str, article_type: str) -> str | None:
+        """Prompt instructions alone don't reliably stop the model from
+        appending stale SEO-pattern years like 'for 2024' -- this is common
+        training-data noise the model reaches for regardless of what the
+        prompt says. Enforce the year rule in code instead of trusting it."""
+        match = self.YEAR_PATTERN.search(title)
+        if not match:
+            return None
+
+        found_year = match.group(1)
+        current_year = str(datetime.now().year)
+
+        if article_type.lower() == "best product list":
+            if found_year != current_year:
+                return f"Stale year '{found_year}' in title (current year is {current_year})"
+            return None
+
+        return f"Year '{found_year}' not allowed in a {article_type} title"
+
+    # Common ways a year shows up as removable filler, vs. being genuinely
+    # part of the title (e.g. a named model year comparison, which we leave
+    # alone -- see _strip_disallowed_year).
+    YEAR_STRIP_PATTERNS = [
+        re.compile(r"\s*[\(\[]\s*20\d{2}\s*[\)\]]"),        # "(2026)" / "[2026]"
+        re.compile(r"\s*[-:–]\s*20\d{2}\s*$"),                # trailing "- 2026" / ": 2026"
+        re.compile(r"\s+for\s+20\d{2}\b", re.IGNORECASE),     # "... for 2026"
+        re.compile(r"\s+in\s+20\d{2}\b", re.IGNORECASE),      # "... in 2026"
+        re.compile(r"\s+20\d{2}\s+(edition|guide|update)\b", re.IGNORECASE),
+    ]
+
+    def _strip_disallowed_year(self, title: str) -> str | None:
+        """Best-effort auto-fix for a title that failed the year check.
+        Returns the cleaned title, or None if the year couldn't be safely
+        removed (e.g. it's woven into the title in a way that isn't a known
+        filler pattern) -- caller falls back to rejecting/retrying in that
+        case rather than mangling the title."""
+        cleaned = title
+        for pattern in self.YEAR_STRIP_PATTERNS:
+            cleaned = pattern.sub("", cleaned)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" -:–")
+
+        if self.YEAR_PATTERN.search(cleaned):
+            return None
+        return cleaned
+
     def _pick_category(self, history: List[Dict[str, str]]) -> str:
         recent = {
             entry["category"]
@@ -156,6 +207,23 @@ class TopicGenerator:
     # -- prompt -----------------------------------------------------------
 
     def _build_prompt(self, category: str, product: str, article_type: str) -> str:
+        current_year = datetime.now().year
+
+        # Only surface the actual year number when this format is allowed to
+        # use it. Printing "{current_year}" into every prompt -- even ones
+        # instructing the model NOT to use a year -- gave the model a fresh
+        # number to latch onto and it started appending it anyway. Simplest
+        # fix: don't put the number in front of the model unless it's needed.
+        if article_type.lower() == "best product list":
+            year_instructions = f"""
+The current year is {current_year}. You may include {current_year} in the
+title only if it is genuinely necessary -- never an earlier year."""
+        else:
+            year_instructions = """
+Do not include any year anywhere in the title, in any form (not "for", "in",
+parentheses, or as a suffix), unless comparing specific named model years
+(e.g. "iPhone 15 vs iPhone 16")."""
+
         return f"""You are an SEO strategist for Ejiro Inspire.
 
 Today's category: {category}
@@ -166,12 +234,7 @@ Generate ONE original affiliate article idea for this category, product family,
 and format. Prefer lesser-known brands over Apple, Dell, HP, Samsung. Mix
 premium, mid-range, and budget options where relevant. Avoid crypto, gambling,
 politics, celebrities, entertainment, medical, and legal topics.
-
-Year rules:
-- Buying Guides, Comparisons, Alternatives, and Pros and Cons: no year, unless
-  comparing specific model years.
-- Reviews: no year unless it's part of the official product name.
-- Best Product Lists: may include the current year only if necessary.
+{year_instructions}
 
 Return ONLY valid JSON in this exact shape:
 
@@ -234,6 +297,21 @@ Return ONLY valid JSON in this exact shape:
                     raise ValueError(
                         f"Type mismatch: expected {article_type}, got {topic['type']}"
                     )
+
+                year_issue = self._year_violation(topic["title"], article_type)
+                if year_issue:
+                    # "Best Product List" with a wrong year is a factual
+                    # error (stale year), not just unwanted filler -- don't
+                    # try to patch that, just regenerate.
+                    if article_type.lower() == "best product list":
+                        raise ValueError(year_issue)
+
+                    fixed_title = self._strip_disallowed_year(topic["title"])
+                    if fixed_title:
+                        print(f"Auto-fixed title year: '{topic['title']}' -> '{fixed_title}'")
+                        topic["title"] = fixed_title
+                    else:
+                        raise ValueError(year_issue)
 
                 if self._is_duplicate(topic["title"], history):
                     raise ValueError(f"Duplicate title: {topic['title']}")

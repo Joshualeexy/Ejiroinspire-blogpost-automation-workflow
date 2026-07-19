@@ -22,6 +22,7 @@ class ComfyClient:
     ):
         self.server = COMFY_URL.rstrip("/")
         self.client_id = str(uuid.uuid4())
+        self.session = requests.Session()
 
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
@@ -36,7 +37,7 @@ class ComfyClient:
         checkpoint: str = "juggernautXL_ragnarok.safetensors",
         width: int = 1344,
         height: int = 768,
-        steps: int = 25,
+        steps: int = 50,
         cfg: float = 7,
         sampler: str = "euler",
         scheduler: str = "normal",
@@ -101,7 +102,7 @@ class ComfyClient:
         #
         # Submit Workflow
         #
-        response = requests.post(
+        response = self.session.post(
             f"{self.server}/prompt",
             json={
                 "prompt": workflow,
@@ -123,7 +124,7 @@ class ComfyClient:
 
         while True:
 
-            response = requests.get(
+            response = self.session.get(
                 f"{self.server}/history/{prompt_id}",
                 timeout=30,
             )
@@ -154,7 +155,7 @@ class ComfyClient:
         Download generated image from ComfyUI.
         """
 
-        response = requests.get(
+        response = self.session.get(
             f"{self.server}/view",
             params={
                 "filename": image["filename"],
