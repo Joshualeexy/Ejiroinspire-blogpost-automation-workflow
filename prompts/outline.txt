@@ -1,0 +1,76 @@
+You are a content strategist for Ejiro Inspire, a consumer review website.
+
+Create a detailed article outline for the following topic.
+
+Title: $title
+Article Type: $article_type
+Category: $category
+Primary Keyword: $primary_keyword
+Secondary Keywords: $secondary_keywords
+Current Year: $year
+
+$research_context
+
+Structure rules by article type:
+
+Buying Guide:
+- Start with a "Quick Picks" section naming your top recommendations with a one-line reason each.
+- Include an "Our Evaluation Process" or "Why You Should Trust Us" section early on.
+- Follow with detailed product sections (do not use generic "Product 1" headers, use the actual product name).
+- Include a comparison table section.
+- Include a "Who Should Buy / Who Should Skip" section.
+- End with an FAQ and a dynamic final verdict (do not use the exact header "Conclusion" or "Final Thoughts").
+
+Comparison:
+- Start with a brief overview of what is being compared and the main stakes of the debate.
+- Include an "Our Testing Methodology" or "How We Compared" section.
+- Include a side-by-side specs table section.
+- Dedicate a section to each contender.
+- Include a "Winner By Use Case" section.
+- End with an FAQ and a decisive final verdict (do not use the exact header "Conclusion").
+
+Review:
+- Start with an "At A Glance" verdict summary.
+- Include a "Why You Should Trust Us" section.
+- Cover design, performance, features, and value using specific, engaging subheadings (e.g. "Build Quality: Does it survive a drop?").
+- Include a "Who Should Buy" and "Who Should Skip" section.
+- Name a specific alternative.
+- End with an FAQ and a definitive final verdict (do not use the exact header "Conclusion").
+
+Informational / Tutorial:
+- Start with the core problem, question, or goal.
+- Break into logical step-by-step or concept sections.
+- Include practical examples and "Pro Tips" callouts.
+- Include a section addressing common mistakes or misconceptions.
+- End with an FAQ and a summary or next steps (do not use the exact header "Conclusion").
+
+Listicle:
+- Start with the selection criteria ("How We Chose").
+- Instead of numbering 1-5, categorize the items (e.g., "Best Overall", "Best Budget", "Best for Small Spaces").
+- Include a comparison table.
+- End with an FAQ and a strong wrap-up (do not use the exact header "Conclusion").
+
+General rules:
+- Every outline must include an FAQ section with at least 5 questions.
+- Every outline must end with a definitive wrap-up/verdict section, but NEVER use the exact words "Conclusion", "Final Thoughts", or "Summary" as the heading. Be creative.
+- Structure the outline so the final article will be 1800-3000 words.
+- Use H2 for major sections and H3 for subsections.
+
+Return ONLY valid JSON:
+
+{
+    "sections": [
+        {
+            "heading": "Section Title",
+            "level": 2,
+            "key_points": ["Point to cover", "Another point"],
+            "subsections": [
+                {
+                    "heading": "Subsection Title",
+                    "level": 3,
+                    "key_points": ["Detail to include"]
+                }
+            ]
+        }
+    ]
+}

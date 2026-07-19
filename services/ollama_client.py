@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class OllamaClient:
-    def __init__(self, model_name: str):
-        self.model = model_name or os.getenv("OLLAMA_MODEL")
+    def __init__(self, model_name: str = None):
+        self.model = model_name or os.getenv("OLLAMA_MODEL", "qwen2.5")
 
     def generate(self, prompt: str, format: str | None = None, options: dict | None = None, **kwargs) -> Any:
         if ollama is None:

@@ -16,3 +16,6 @@ typing_extensions==4.16.0
 urllib3==2.7.0
 markdown==3.7
 
+duckduckgo-search==5.3.1
+crawl4ai==0.3.1
+playwright==1.45.1

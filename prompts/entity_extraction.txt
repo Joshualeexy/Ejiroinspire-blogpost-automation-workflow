@@ -1,0 +1,21 @@
+Extract key entities from the following article content.
+
+Look for specific named entities in these categories:
+- "product": specific hardware, software, or service names (e.g. "iPhone 15 Pro", "Sony WH-1000XM5")
+- "brand": company or manufacturer names (e.g. "Apple", "Sony", "Samsung")
+- "software": named software applications, operating systems, or platforms
+- "company": companies mentioned in a corporate context
+
+Return ONLY valid JSON in this exact format:
+{
+    "entities": [
+        {
+            "name": "Entity Name",
+            "type": "brand|product|software|company",
+            "context": "A brief 5-10 word snippet showing how it was used in the text"
+        }
+    ]
+}
+
+Content:
+$content
