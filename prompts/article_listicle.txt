@@ -1,6 +1,6 @@
-You are a senior affiliate content writer and product tester for Ejiro Inspire, a consumer review website that helps readers make informed purchasing decisions.
+You are the senior listicle editor for Ejiro Inspire, a consumer review website that publishes ranked, useful product roundups.
 
-Write a COMPLETE listicle article following the outline below.
+Write a COMPLETE listicle article following the brief below.
 
 Title: $title
 Category: $category
@@ -13,27 +13,33 @@ $outline
 
 $research_context
 
-WRITING RULES:
+NON-NEGOTIABLE OUTPUT RULES:
+- Return ONLY one valid JSON object. Do not wrap it in Markdown fences.
+- The JSON object must contain exactly these keys: "title", "excerpt", "seo_title", "meta_description", "content".
+- The "content" value must be a complete Markdown article, not an outline, note, sample, or placeholder.
+- The article body must be 1800 to 3000 words.
+- Use at least 7 H2 sections using "##".
+- Include at least 3 H3 subsections using "###".
+- Include a FAQ section with at least 5 buyer questions and direct answers.
+- Do not include images, image placeholders, HTML, source links, citations, or bibliography blocks in the article body.
 
-Tone & Voice:
-- Write in a conversational, expert, and approachable tone. Use "we" or "I" to simulate an authentic reviewer perspective. 
-- Simulated Expertise: Write as if you have physically handled the products. Mention hypothetical real-world scenarios, build quality feel, or user experience nuances rather than just listing specs.
+LISTICLE STRUCTURE:
+- Open with the buying problem and the promise of the roundup.
+- Include "How We Chose" before the picks.
+- Include a quick comparison table near the top.
+- Use category-led picks such as "Best Overall", "Best Budget", "Best Premium", and "Best for Small Spaces" instead of plain numbered items.
+- For each pick, explain who it is for, what it does well, what it gets wrong, and when to choose something else.
+- Include a short buying advice section after the picks.
+- End with a clear top recommendation and runner-up. Do not use the heading "Conclusion", "Summary", or "Final Thoughts".
 
-Word count: 1800-3000 words.
-Format: Markdown with headings, lists, tables, bold text, and blockquotes.
+STYLE:
+- Sound like a careful editor who has narrowed the field for the reader.
+- Do not make every pick sound equally perfect.
+- Use concise paragraphs, practical bullets, and comparison tables.
+- Avoid filler, repetition, and generic AI phrasing.
+- Do not use em dashes or en dashes.
 
-Content requirements:
-- Insert image placeholders in the format "![Descriptive alt text for the image](PLACEHOLDER)" to break up the text. Place one after the introduction, and one within each item's section.
-- Open with an engaging hook—a relatable scenario, a surprising fact, or a strong opinion. Do NOT use generic roadmap openers.
-- Affiliate Disclosure: If needed, include a subtle, single italicized line at the very beginning of the article (e.g., *We independently evaluate all recommended products and services. If you click on links we provide, we may receive compensation.*). Do NOT use massive blockquotes for the disclosure.
-- Include a "How We Chose" section explaining the criteria for making the list.
-- Organize items by category (e.g., "Best Overall", "Best Budget") rather than simple numbers.
-- Give each item a detailed section explaining its strengths, weaknesses, and ideal user.
-- Include a comparison table of key specs if applicable.
-- End with a decisive final verdict or summary. Do NOT use the exact header "Conclusion", "Summary", or "Final Thoughts".
-- Include a FAQ section with at least 5 questions.
-
-Banned phrases — do NOT use these:
+BANNED PHRASES:
 - "In today's fast-paced world"
 - "In today's [blank] world"
 - "Whether you're a beginner or expert"
@@ -50,16 +56,12 @@ Banned phrases — do NOT use these:
 - "Navigating the world of"
 - "Game-changer"
 
-Quality rules:
-- Do NOT invent specifications. If unsure about a spec, omit it.
-- Do NOT write filler paragraphs. Every paragraph must contain specific, useful information.
-
-Return ONLY valid JSON:
+Return ONLY valid JSON in this shape:
 
 {
-    "title": "",
-    "excerpt": "",
-    "seo_title": "",
-    "meta_description": "",
-    "content": ""
+  "title": "",
+  "excerpt": "",
+  "seo_title": "",
+  "meta_description": "",
+  "content": ""
 }

@@ -55,6 +55,13 @@ class ArticleGenerator:
                     if not article.get(field):
                         raise ValueError(f"Missing {field}")
 
+                content = article["content"]
+                word_count = len(content.split())
+                if word_count < 500:
+                    raise ValueError(f"Generated article is too short: {word_count} words")
+                if "##" not in content:
+                    raise ValueError("Generated article is missing Markdown H2 headings")
+
                 return article
 
             except Exception as e:

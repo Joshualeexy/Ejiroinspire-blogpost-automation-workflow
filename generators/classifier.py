@@ -10,6 +10,24 @@ class ArticleType(Enum):
     INFORMATIONAL = "informational"
     LISTICLE = "listicle"
 
+
+TOPIC_FORMAT_TO_ARTICLE_TYPE = {
+    "review": ArticleType.REVIEW,
+    "comparison": ArticleType.COMPARISON,
+    "buying guide": ArticleType.BUYING_GUIDE,
+    "best product list": ArticleType.LISTICLE,
+    "best product under budget": ArticleType.LISTICLE,
+    "alternatives": ArticleType.COMPARISON,
+    "pros and cons": ArticleType.REVIEW,
+    "is it worth it": ArticleType.REVIEW,
+}
+
+
+def article_type_from_topic_format(topic_format: str | None) -> ArticleType | None:
+    if not topic_format:
+        return None
+    return TOPIC_FORMAT_TO_ARTICLE_TYPE.get(topic_format.strip().lower())
+
 class Classifier:
     def __init__(self):
         self.client = OllamaClient()

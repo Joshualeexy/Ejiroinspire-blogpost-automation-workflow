@@ -49,8 +49,4 @@ class ArticleValidator:
         if "##" not in content:
             report.issues.append(ValidationIssue("markdown_structure", "Missing Markdown headings (H2)."))
 
-        # Image placeholder check
-        if "![Descriptive alt text for the image](PLACEHOLDER)" not in content and "![Descriptive alt text" not in content:
-            report.issues.append(ValidationIssue("image_placeholders", "Missing image placeholders.", severity="warning"))
-
         return report

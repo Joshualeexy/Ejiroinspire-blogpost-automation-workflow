@@ -2,12 +2,17 @@ import argparse
 import json
 import time
 import traceback
+import subprocess
+import warnings
 from pathlib import Path
+
+# Suppress unclosed sqlite3 ResourceWarnings from Crawl4AI and other libs
+warnings.filterwarnings("ignore", category=ResourceWarning)
 
 from generators.topic_generator import TopicGenerator
 from generators.article_generator import ArticleGenerator
 from generators.image_prompt_generator import ImagePromptGenerator
-from generators.classifier import Classifier, ArticleType
+from generators.classifier import Classifier, ArticleType, article_type_from_topic_format
 from generators.outline_generator import OutlineGenerator
 from generators.entity_extractor import EntityExtractor
 from validation.article_validator import ArticleValidator
@@ -19,6 +24,7 @@ from services.comfy import ComfyClient
 from services.markdown import to_html
 
 STATE_PATH = Path("pipeline_state.json")
+MAX_VALIDATION_RETRIES = 3
 
 def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
@@ -58,7 +64,12 @@ def run_pipeline(
         if state["stage"] in {"start", "topic_generated"}:
             if not topic:
                 print("Starting stage: Generate Topic")
-                topic = topic_generator.generate()
+                try:
+                    topic = topic_generator.generate()
+                except ValueError as e:
+                    print(f"Topic generation failed after all retries: {e}")
+                    clear_state()
+                    return
                 print(f"Completed stage: Generate Topic — Topic: {topic['title']}")
                 state.update({"stage": "topic_generated", "topic": topic})
                 save_state(state)
@@ -77,8 +88,12 @@ def run_pipeline(
         article_type_val = state.get("article_type")
         if state["stage"] in {"topic_checked", "topic_classified"}:
             if not article_type_val:
-                print("Starting stage: Classify Topic")
-                article_type = classifier.classify(topic["title"])
+                article_type = article_type_from_topic_format(topic.get("type"))
+                if article_type:
+                    print(f"Using topic format for article type: {article_type.value}")
+                else:
+                    print("Starting stage: Classify Topic")
+                    article_type = classifier.classify(topic["title"])
                 print(f"Completed stage: Classify Topic — {article_type.value}")
                 state.update({"stage": "topic_classified", "article_type": article_type.value})
                 save_state(state)
@@ -90,8 +105,20 @@ def run_pipeline(
         if state["stage"] in {"topic_classified", "research_completed"}:
             if not research_dict:
                 print("Starting stage: Research")
+                # Try the highly specific query first
                 query = f"{topic['primary_keyword']} {topic['title']}"
                 report = researcher.search(query)
+                
+                # Fallback 1: Just the title
+                if not report.results:
+                    print("Full query returned 0 results, falling back to title...")
+                    report = researcher.search(topic['title'])
+                    
+                # Fallback 2: Just the primary keyword
+                if not report.results:
+                    print("Title query returned 0 results, falling back to primary keyword...")
+                    report = researcher.search(topic['primary_keyword'])
+                    
                 print(f"Completed stage: Research — Found {len(report.results)} results")
                 # Convert dataclass to dict for JSON serialization
                 report_dict = {
@@ -140,14 +167,28 @@ def run_pipeline(
                 print("Validation failed! Looping back to article generation.")
                 for issue in report.issues:
                     print(f"[{issue.severity.upper()}] {issue.check}: {issue.message}")
+
+                failures = int(state.get("validation_failures", 0)) + 1
+                if failures >= MAX_VALIDATION_RETRIES:
+                    state["status"] = "failed"
+                    state["validation_failures"] = failures
+                    save_state(state)
+                    print(
+                        f"Article validation failed {failures} times. "
+                        "Saved state for inspection."
+                    )
+                    return
+
                 # Reset state to generate article again
                 state["stage"] = "outline_generated"
                 state["article"] = None
+                state["validation_failures"] = failures
                 save_state(state)
                 return # Break out and let loop restart
             else:
                 print("Completed stage: Validate Article — Passed")
                 state["stage"] = "article_validated"
+                state["validation_failures"] = 0
                 save_state(state)
 
         # 7. Entity Extraction
@@ -191,15 +232,22 @@ def run_pipeline(
             state["stage"] = "image_generated"
             save_state(state)
 
-        # 11. Image Generation
+        # 11. Image Generation with Process Management
         image_path = state.get("image_path")
         if state["stage"] in {"image_generated", "publish_ready"}:
             if not image_path:
                 print("Starting stage: Generate Featured Image")
-                image_path = comfy.generate(prompt=image_prompt)
-                print("Completed stage: Generate Featured Image")
-                state.update({"stage": "publish_ready", "image_path": image_path})
-                save_state(state)
+                try:
+                    # Let the ComfyClient handle process management now
+                    image_path = comfy.generate(image_prompt)
+                    print("Completed stage: Generate Featured Image")
+                    state.update({"stage": "publish_ready", "image_path": image_path})
+                    save_state(state)
+                except Exception as e:
+                    print(f"Failed to generate image: {e}")
+                    print("This might be due to ComfyUI not running or memory issues.")
+                    print("Please ensure ComfyUI server is running on 127.0.0.1:8188")
+                    raise
 
         # 12. Publish
         if state["stage"] == "publish_ready":
@@ -214,7 +262,7 @@ def run_pipeline(
         save_state(state)
         raise
 
-    except Exception:
+    except Exception as e:
         traceback.print_exc()
         state["status"] = "failed"
         save_state(state)
@@ -227,32 +275,49 @@ def main(clear_saved_state: bool = False):
         print("Clearing saved pipeline state before starting.")
         clear_state()
 
-    api = ApiClient()
-    comfy = ComfyClient(workflow_path="services/workflow.json")
+    try:
+        api = ApiClient()
+        # Pass None for comfy_server_process to let ComfyClient manage its own processes
+        comfy = ComfyClient(workflow_path="services/workflow.json", comfy_server_process=None)
 
-    topic_generator = TopicGenerator()
-    article_generator = ArticleGenerator()
-    image_prompt_generator = ImagePromptGenerator()
-    
-    # Initialize new modules
-    classifier = Classifier()
-    researcher = Crawl4AiProvider()
-    outline_generator = OutlineGenerator()
-    validator = ArticleValidator()
-    entity_extractor = EntityExtractor()
+        topic_generator = TopicGenerator()
+        article_generator = ArticleGenerator()
+        image_prompt_generator = ImagePromptGenerator()
+        
+        # Initialize new modules
+        classifier = Classifier()
+        researcher = Crawl4AiProvider()
+        outline_generator = OutlineGenerator()
+        validator = ArticleValidator()
+        entity_extractor = EntityExtractor()
 
-    while True:
-        run_pipeline(
-            api, comfy, topic_generator, article_generator, image_prompt_generator,
-            classifier, researcher, outline_generator, validator, entity_extractor
-        )
+        while True:
+            run_pipeline(
+                api, comfy, topic_generator, article_generator, image_prompt_generator,
+                classifier, researcher, outline_generator, validator, entity_extractor
+            )
 
-        if STATE_PATH.exists():
-            print("Saved state exists. Exiting to avoid overwriting incomplete session.")
-            break
+            if STATE_PATH.exists():
+                state = load_state() or {}
+                should_retry_article = (
+                    state.get("stage") == "outline_generated"
+                    and state.get("article") is None
+                    and state.get("status") != "failed"
+                    and int(state.get("validation_failures", 0)) < MAX_VALIDATION_RETRIES
+                )
+                if should_retry_article:
+                    print("Retrying article generation after validation failure...")
+                    continue
 
-        print("Sleeping before next session...")
-        time.sleep(10)
+                print("Saved state exists. Exiting to avoid overwriting incomplete session.")
+                break
+
+            print("Sleeping before next session...")
+            time.sleep(10)
+            
+    except Exception as e:
+        print(f"Pipeline error: {e}")
+        raise
 
 
 if __name__ == "__main__":

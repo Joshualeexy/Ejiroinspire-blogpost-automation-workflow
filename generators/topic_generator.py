@@ -99,7 +99,7 @@ class TopicGenerator:
     def __init__(
         self,
         model_name: str | None = None,
-        max_retries: int = 3,
+        max_retries: int = 5,
         history_file: str = "generated_topics.json",
         history_limit: int = 1000,
     ):
@@ -185,9 +185,10 @@ class TopicGenerator:
         cleaned = title
         for pattern in self.YEAR_STRIP_PATTERNS:
             cleaned = pattern.sub("", cleaned)
+        cleaned = self.YEAR_PATTERN.sub("", cleaned)
         cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" -:–")
 
-        if self.YEAR_PATTERN.search(cleaned):
+        if not cleaned or self.YEAR_PATTERN.search(cleaned):
             return None
         return cleaned
 
@@ -234,6 +235,11 @@ Generate ONE original affiliate article idea for this category, product family,
 and format. Prefer lesser-known brands over Apple, Dell, HP, Samsung. Mix
 premium, mid-range, and budget options where relevant. Avoid crypto, gambling,
 politics, celebrities, entertainment, medical, and legal topics.
+
+CRITICAL TITLE RULES:
+- Keep the title extremely short, punchy, and under 65 characters total. 
+- Maximum of 8 words. 
+- Do NOT use colons (:) or long subtitles.
 {year_instructions}
 
 Return ONLY valid JSON in this exact shape:
@@ -251,13 +257,12 @@ Return ONLY valid JSON in this exact shape:
     def generate(self) -> Dict[str, Any]:
         history = self._load_history()
 
-        category = self._pick_category(history)
-        product = random.choice(self.CATEGORIES[category])
-        article_type = random.choice(self.FORMATS)
-
-        prompt = self._build_prompt(category, product, article_type)
-
         for attempt in range(self.max_retries):
+            category = self._pick_category(history)
+            product = random.choice(self.CATEGORIES[category])
+            article_type = random.choice(self.FORMATS)
+            prompt = self._build_prompt(category, product, article_type)
+
             try:
                 response = self.client.generate(
                     prompt=prompt,
